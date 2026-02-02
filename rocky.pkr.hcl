@@ -16,7 +16,7 @@ source "proxmox-iso" "rocky" {
   username     = var.token_id
   token        = var.token_secret
   insecure_skip_tls_verify = true
-
+  cpu          = "host"
   node         = "pve"
   vm_id        = 9002
   vm_name      = "rocky-9-golden"
