@@ -16,18 +16,26 @@ jobs:
         uses: actions/checkout@v4
 
       # Ensure tools exist
-      - name: Ensure tools
-        run: |
-          command -v packer || {
-            sudo apt update
-            sudo apt install -y gnupg software-properties-common jq
-            curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo apt-key add -
-            sudo apt-add-repository "deb https://apt.releases.hashicorp.com $(lsb_release -cs) main"
-            sudo apt update
-            sudo apt install -y packer
-          }
-          packer version
-          jq --version
+    - name: Ensure Packer and jq
+  run: |
+    # Install jq if missing
+    command -v jq >/dev/null 2>&1 || sudo apt update && sudo apt install -y jq
+
+    # Install / Upgrade Packer if version < 1.14
+    PACKER_VERSION=$(packer version | head -1 | awk '{print $2}' | tr -d 'v')
+    REQUIRED="1.14.3"
+
+    if [ "$(printf '%s\n' "$REQUIRED" "$PACKER_VERSION" | sort -V | head -n1)" != "$REQUIRED" ]; then
+      echo "Upgrading Packer..."
+      curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo apt-key add -
+      sudo apt-add-repository "deb https://apt.releases.hashicorp.com $(lsb_release -cs) main"
+      sudo apt update
+      sudo apt install -y packer
+    fi
+
+    packer version
+    jq --version
+
 
       # Cleanup old VM
       - name: Cleanup existing VM
