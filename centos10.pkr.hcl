@@ -22,6 +22,10 @@ source "proxmox-iso" "centos10" {
   vm_name  = "centos10-stream-golden"
   os       = "l26"
 
+  # 🔥 Packer will auto convert to template
+  template_name        = "centos10-stream-golden"
+  template_description = "CentOS Stream 10 Golden Image"
+
   memory   = 2048
   cores    = 2
   sockets  = 1
@@ -41,18 +45,24 @@ source "proxmox-iso" "centos10" {
     format       = "raw"
   }
 
-  # ISO already uploaded to Proxmox
-  iso_file          = "local:iso/CentOS-Stream-10-latest-x86_64-dvd1.iso"
-  iso_storage_pool  = "local"
-  unmount_iso       = true
+  # ✅ NEW ISO STYLE (no warnings)
+  boot_iso {
+    type         = "scsi"
+    iso_file     = "local:iso/CentOS-Stream-10-latest-x86_64-dvd1.iso"
+    storage_pool = "local"
+    unmount      = true
+  }
 
-  # Kickstart from Packer HTTP
+  # Kickstart via Packer HTTP
   http_directory = "http"
   boot_wait      = "10s"
 
+  # ✅ Correct CentOS Stream 10 boot
   boot_command = [
     "<esc><wait>",
-    "linux inst.ks=http://{{ .HTTPIP }}:{{ .HTTPPort }}/cent10-ks.cfg ip=dhcp<enter>"
+    "linux /images/pxeboot/vmlinuz inst.ks=http://{{ .HTTPIP }}:{{ .HTTPPort }}/cent10-ks.cfg ip=dhcp inst.text<enter>",
+    "initrd /images/pxeboot/initrd.img<enter>",
+    "boot<enter>"
   ]
 
   ssh_username = "root"
