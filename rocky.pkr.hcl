@@ -11,20 +11,21 @@ variable "proxmox_url" {}
 variable "token_id" {}
 variable "token_secret" {}
 
-source "proxmox" "rocky" {
-  proxmox_url = var.proxmox_url
-  username    = var.token_id
-  token       = var.token_secret
+source "proxmox-iso" "rocky" {
+  proxmox_url  = var.proxmox_url
+  username     = var.token_id
+  token        = var.token_secret
   insecure_skip_tls_verify = true
 
-  node        = "pve"
-  vm_id       = "9002"
-  vm_name     = "rocky-9-golden"
+  node         = "pve"
+  vm_id        = 9002
+  vm_name      = "rocky-9-golden"
 
-  iso_file    = "local:iso/Rocky-9-latest-x86_64-boot.iso"
+  iso_file     = "local:iso/Rocky-9.4-x86_64-minimal.iso"
+  unmount_iso  = true
 
-  cores       = 2
-  memory      = 2048
+  cores        = 2
+  memory       = 2048
   scsi_controller = "virtio-scsi-pci"
 
   network_adapters {
@@ -33,17 +34,19 @@ source "proxmox" "rocky" {
   }
 
   disks {
-    type    = "scsi"
-    storage = "local-lvm"
-    size    = "20G"
+    type         = "scsi"
+    storage_pool = "local-lvm"
+    disk_size    = "20G"
+    format       = "qcow2"
   }
 
-  cloud_init = true
-  qemu_agent = true
+  ssh_username  = "root"
+  ssh_password  = "rocky"
+  ssh_timeout   = "30m"
 }
 
 build {
-  sources = ["source.proxmox.rocky"]
+  sources = ["source.proxmox-iso.rocky"]
 
   provisioner "shell" {
     inline = [
@@ -51,10 +54,7 @@ build {
       "dnf -y install openssh-server qemu-guest-agent cloud-init sudo",
       "systemctl enable sshd",
       "systemctl enable qemu-guest-agent",
-      "systemctl start sshd",
-      "systemctl start qemu-guest-agent",
 
-      # Clean for template
       "cloud-init clean",
       "truncate -s 0 /etc/machine-id",
       "rm -f /var/lib/dbus/machine-id",
