@@ -44,7 +44,7 @@ source "proxmox-iso" "rocky" {
 
   boot_iso {
     type     = "scsi"
-    iso_file = "local:iso/Rocky-9-latest-x86_64-boot.iso"
+    iso_file = "local:iso/Rocky-9-latest-x86_64-minimal.iso"
     unmount  = true
   }
 
