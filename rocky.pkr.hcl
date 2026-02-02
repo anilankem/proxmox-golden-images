@@ -21,8 +21,8 @@ source "proxmox-iso" "rocky" {
   vm_id        = 9002
   vm_name      = "rocky-9-golden"
 
-  iso_file = "local:iso/Rocky-9-latest-x86_64-boot.iso"
-
+  # MUST match what exists on Proxmox
+  iso_file     = "local:iso/Rocky-9-latest-x86_64-boot.iso"
   unmount_iso  = true
 
   cores        = 2
@@ -34,6 +34,7 @@ source "proxmox-iso" "rocky" {
     model  = "virtio"
   }
 
+  # local-lvm = raw only
   disks {
     type         = "scsi"
     storage_pool = "local-lvm"
