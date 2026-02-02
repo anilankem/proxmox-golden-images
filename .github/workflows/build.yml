@@ -15,7 +15,6 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      # ✅ Cleanup old VM if exists
       - name: Cleanup existing VM
         run: |
           STATUS=$(curl -s -k \
@@ -51,7 +50,6 @@ jobs:
           PKR_VAR_token_secret: ${{ secrets.PROXMOX_TOKEN_SECRET }}
         run: packer build rocky.pkr.hcl
 
-      # ✅ Verify VM stopped
       - name: Verify VM stopped
         run: |
           STATE=$(curl -s -k \
@@ -61,19 +59,28 @@ jobs:
 
           [ "$STATE" = "stopped" ]
 
-      # ✅ Convert to template
       - name: Convert to Template
         run: |
           curl -s -k -X POST \
             -H "Authorization: PVEAPIToken=${{ secrets.PROXMOX_TOKEN_ID }}=${{ secrets.PROXMOX_TOKEN_SECRET }}" \
             ${{ secrets.PROXMOX_URL }}/nodes/${NODE}/qemu/${VMID}/template
 
-      # ✅ Validate template
       - name: Validate Template
         run: |
-          TEMPLATE=$(curl -s -k \
+          set -e
+          RESPONSE=$(curl -s -k \
             -H "Authorization: PVEAPIToken=${{ secrets.PROXMOX_TOKEN_ID }}=${{ secrets.PROXMOX_TOKEN_SECRET }}" \
-            ${{ secrets.PROXMOX_URL }}/nodes/${NODE}/qemu/${VMID}/status/current \
-            | jq -r '.data.template')
+            ${{ secrets.PROXMOX_URL }}/nodes/${NODE}/qemu/${VMID}/status/current)
 
-          [ "$TEMPLATE" = "true" ]
+          echo "API response:"
+          echo "$RESPONSE"
+
+          TEMPLATE=$(echo "$RESPONSE" | jq -r '.data.template')
+          echo "Template flag: $TEMPLATE"
+
+          if [ "$TEMPLATE" != "true" ]; then
+            echo "❌ VM is NOT a template"
+            exit 1
+          fi
+
+          echo "✅ VM successfully converted to template"
