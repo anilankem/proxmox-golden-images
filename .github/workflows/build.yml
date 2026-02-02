@@ -11,17 +11,22 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      # Prevent the "wrong HCL file" problem forever
       - name: Show files
         run: |
           pwd
           ls -la
           find . -name "*.pkr.hcl"
 
-      - name: Install Packer (official apt)
+      # ✅ Install latest Packer from HashiCorp
+      - name: Install Latest Packer
         run: |
           sudo apt update
+          sudo apt install -y gnupg software-properties-common
+          curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo apt-key add -
+          sudo apt-add-repository "deb https://apt.releases.hashicorp.com $(lsb_release -cs) main"
+          sudo apt update
           sudo apt install -y packer
+          packer version
 
       - name: Packer Init
         run: packer init rocky.pkr.hcl
@@ -40,9 +45,9 @@ jobs:
           PKR_VAR_token_secret: ${{ secrets.PROXMOX_TOKEN_SECRET }}
         run: packer build rocky.pkr.hcl
 
-      # Verify VM 9002 became a template
+      # ✅ Verify template on correct node
       - name: Verify Template
         run: |
           curl -k \
           -H "Authorization: PVEAPIToken=${{ secrets.PROXMOX_TOKEN_ID }}=${{ secrets.PROXMOX_TOKEN_SECRET }}" \
-          ${{ secrets.PROXMOX_URL }}/nodes/pve/qemu/9002/status/current | grep template
+          ${{ secrets.PROXMOX_URL }}/nodes/proxmox/qemu/9002/status/current | grep template
