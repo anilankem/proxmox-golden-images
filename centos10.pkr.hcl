@@ -39,11 +39,11 @@ source "proxmox-iso" "centos10" {
   }
 
   disks {
-    type         = "scsi"
-    storage_pool = "local-lvm"
-    disk_size    = "20G"
-    format       = "raw"
-  }
+  type    = "scsi"
+  storage = "local-lvm"
+  size    = "20G"
+  format  = "raw"
+}
 
   # ✅ NEW ISO STYLE (no warnings)
 boot_iso {
