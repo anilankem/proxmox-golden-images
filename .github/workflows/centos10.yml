@@ -1,0 +1,86 @@
+name: Build CentOS10 Golden Image
+
+on:
+  workflow_dispatch:
+
+env:
+  VMID: "9003"
+  NODE: "proxmox"
+
+jobs:
+  build:
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Cleanup existing VM
+        run: |
+          STATUS=$(curl -s -k \
+            -H "Authorization: PVEAPIToken=${{ secrets.PROXMOX_TOKEN_ID }}=${{ secrets.PROXMOX_TOKEN_SECRET }}" \
+            ${{ secrets.PROXMOX_URL }}/nodes/${NODE}/qemu/${VMID}/status/current \
+            | jq -r '.data.status' 2>/dev/null || echo "notfound")
+
+          if [ "$STATUS" != "notfound" ] && [ "$STATUS" != "null" ]; then
+            echo "VM exists. Removing..."
+            curl -s -k -X POST \
+              -H "Authorization: PVEAPIToken=${{ secrets.PROXMOX_TOKEN_ID }}=${{ secrets.PROXMOX_TOKEN_SECRET }}" \
+              ${{ secrets.PROXMOX_URL }}/nodes/${NODE}/qemu/${VMID}/status/stop || true
+            sleep 8
+            curl -s -k -X DELETE \
+              -H "Authorization: PVEAPIToken=${{ secrets.PROXMOX_TOKEN_ID }}=${{ secrets.PROXMOX_TOKEN_SECRET }}" \
+              ${{ secrets.PROXMOX_URL }}/nodes/${NODE}/qemu/${VMID}
+          fi
+
+      - name: Packer Init
+        run: packer init centos10/centos10.pkr.hcl
+
+      - name: Packer Validate
+        env:
+          PKR_VAR_proxmox_url: ${{ secrets.PROXMOX_URL }}
+          PKR_VAR_token_id: ${{ secrets.PROXMOX_TOKEN_ID }}
+          PKR_VAR_token_secret: ${{ secrets.PROXMOX_TOKEN_SECRET }}
+        run: packer validate centos10/centos10.pkr.hcl
+
+      - name: Packer Build
+        env:
+          PKR_VAR_proxmox_url: ${{ secrets.PROXMOX_URL }}
+          PKR_VAR_token_id: ${{ secrets.PROXMOX_TOKEN_ID }}
+          PKR_VAR_token_secret: ${{ secrets.PROXMOX_TOKEN_SECRET }}
+        run: packer build centos10/centos10.pkr.hcl
+
+      - name: Verify VM stopped
+        run: |
+          STATE=$(curl -s -k \
+            -H "Authorization: PVEAPIToken=${{ secrets.PROXMOX_TOKEN_ID }}=${{ secrets.PROXMOX_TOKEN_SECRET }}" \
+            ${{ secrets.PROXMOX_URL }}/nodes/${NODE}/qemu/${VMID}/status/current \
+            | jq -r '.data.status')
+
+          [ "$STATE" = "stopped" ]
+
+      - name: Convert to Template
+        run: |
+          curl -s -k -X POST \
+            -H "Authorization: PVEAPIToken=${{ secrets.PROXMOX_TOKEN_ID }}=${{ secrets.PROXMOX_TOKEN_SECRET }}" \
+            ${{ secrets.PROXMOX_URL }}/nodes/${NODE}/qemu/${VMID}/template
+
+      - name: Validate Template
+        run: |
+          set -e
+          RESPONSE=$(curl -s -k \
+            -H "Authorization: PVEAPIToken=${{ secrets.PROXMOX_TOKEN_ID }}=${{ secrets.PROXMOX_TOKEN_SECRET }}" \
+            ${{ secrets.PROXMOX_URL }}/nodes/${NODE}/qemu/${VMID}/status/current)
+
+          echo "API response:"
+          echo "$RESPONSE"
+
+          TEMPLATE=$(echo "$RESPONSE" | jq -r '.data.template')
+          echo "Template flag: $TEMPLATE"
+
+          if [ "$TEMPLATE" != "1" ]; then
+            echo "❌ VM is NOT a template"
+            exit 1
+          fi
+
+          echo "✅ VM successfully converted to template"
