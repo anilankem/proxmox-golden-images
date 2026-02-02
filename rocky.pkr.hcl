@@ -16,15 +16,14 @@ source "proxmox-iso" "rocky" {
   username     = var.token_id
   token        = var.token_secret
   insecure_skip_tls_verify = true
-  cpu          = "host"
-  node         = "pve"
+
+  # ✅ MUST be your real node name
+  node         = "proxmox"
+
   vm_id        = 9002
   vm_name      = "rocky-9-golden"
 
-  # MUST match what exists on Proxmox
-  iso_file     = "local:iso/Rocky-9-latest-x86_64-boot.iso"
-  unmount_iso  = true
-
+  cpu          = "host"
   cores        = 2
   memory       = 2048
   scsi_controller = "virtio-scsi-pci"
@@ -34,13 +33,16 @@ source "proxmox-iso" "rocky" {
     model  = "virtio"
   }
 
-  # local-lvm = raw only
   disks {
     type         = "scsi"
     storage_pool = "local-lvm"
     disk_size    = "20G"
-    format       = "raw"
   }
+
+  # ✅ CORRECT ISO FORMAT (split pool + file)
+  iso_storage_pool = "local"
+  iso_file         = "Rocky-9-latest-x86_64-boot.iso"
+  unmount_iso      = true
 
   ssh_username  = "root"
   ssh_password  = "rocky"
