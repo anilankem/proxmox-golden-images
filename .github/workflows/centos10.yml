@@ -34,7 +34,7 @@ jobs:
           fi
 
       - name: Packer Init
-        run: packer init centos10/centos10.pkr.hcl
+        run: packer init centos10.pkr.hcl
 
       - name: Packer Validate
         env:
