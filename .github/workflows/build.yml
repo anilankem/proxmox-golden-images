@@ -3,6 +3,10 @@ name: Build Rocky 9 Golden Image
 on:
   workflow_dispatch:
 
+env:
+  VMID: "9002"
+  NODE: "proxmox"
+
 jobs:
   build:
     runs-on: self-hosted
@@ -11,22 +15,38 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Show files
+      # Ensure tools exist
+      - name: Ensure tools
         run: |
-          pwd
-          ls -la
-          find . -name "*.pkr.hcl"
-
-      # ✅ Install latest Packer from HashiCorp
-      - name: Install Latest Packer
-        run: |
-          sudo apt update
-          sudo apt install -y gnupg software-properties-common
-          curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo apt-key add -
-          sudo apt-add-repository "deb https://apt.releases.hashicorp.com $(lsb_release -cs) main"
-          sudo apt update
-          sudo apt install -y packer
+          command -v packer || {
+            sudo apt update
+            sudo apt install -y gnupg software-properties-common jq
+            curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo apt-key add -
+            sudo apt-add-repository "deb https://apt.releases.hashicorp.com $(lsb_release -cs) main"
+            sudo apt update
+            sudo apt install -y packer
+          }
           packer version
+          jq --version
+
+      # Cleanup old VM
+      - name: Cleanup existing VM
+        run: |
+          STATUS=$(curl -s -k \
+            -H "Authorization: PVEAPIToken=${{ secrets.PROXMOX_TOKEN_ID }}=${{ secrets.PROXMOX_TOKEN_SECRET }}" \
+            ${{ secrets.PROXMOX_URL }}/nodes/${NODE}/qemu/${VMID}/status/current \
+            | jq -r '.data.status' 2>/dev/null || echo "notfound")
+
+          if [ "$STATUS" != "notfound" ] && [ "$STATUS" != "null" ]; then
+            echo "VM exists. Removing..."
+            curl -s -k -X POST \
+              -H "Authorization: PVEAPIToken=${{ secrets.PROXMOX_TOKEN_ID }}=${{ secrets.PROXMOX_TOKEN_SECRET }}" \
+              ${{ secrets.PROXMOX_URL }}/nodes/${NODE}/qemu/${VMID}/status/stop || true
+            sleep 8
+            curl -s -k -X DELETE \
+              -H "Authorization: PVEAPIToken=${{ secrets.PROXMOX_TOKEN_ID }}=${{ secrets.PROXMOX_TOKEN_SECRET }}" \
+              ${{ secrets.PROXMOX_URL }}/nodes/${NODE}/qemu/${VMID}
+          fi
 
       - name: Packer Init
         run: packer init rocky.pkr.hcl
@@ -38,16 +58,44 @@ jobs:
           PKR_VAR_token_secret: ${{ secrets.PROXMOX_TOKEN_SECRET }}
         run: packer validate rocky.pkr.hcl
 
-      - name: Packer Build Rocky Template
+      - name: Packer Build
         env:
           PKR_VAR_proxmox_url: ${{ secrets.PROXMOX_URL }}
           PKR_VAR_token_id: ${{ secrets.PROXMOX_TOKEN_ID }}
           PKR_VAR_token_secret: ${{ secrets.PROXMOX_TOKEN_SECRET }}
         run: packer build rocky.pkr.hcl
 
-      # ✅ Verify template on correct node
-      - name: Verify Template
+      # Verify VM is stopped
+      - name: Verify VM stopped
         run: |
-          curl -k \
-          -H "Authorization: PVEAPIToken=${{ secrets.PROXMOX_TOKEN_ID }}=${{ secrets.PROXMOX_TOKEN_SECRET }}" \
-          ${{ secrets.PROXMOX_URL }}/nodes/proxmox/qemu/9002/status/current | grep template
+          STATE=$(curl -s -k \
+            -H "Authorization: PVEAPIToken=${{ secrets.PROXMOX_TOKEN_ID }}=${{ secrets.PROXMOX_TOKEN_SECRET }}" \
+            ${{ secrets.PROXMOX_URL }}/nodes/${NODE}/qemu/${VMID}/status/current \
+            | jq -r '.data.status')
+
+          echo "VM state: $STATE"
+          [ "$STATE" = "stopped" ]
+
+      # 🔥 Convert VM to Template
+      - name: Convert to Template
+        run: |
+          curl -s -k -X POST \
+            -H "Authorization: PVEAPIToken=${{ secrets.PROXMOX_TOKEN_ID }}=${{ secrets.PROXMOX_TOKEN_SECRET }}" \
+            ${{ secrets.PROXMOX_URL }}/nodes/${NODE}/qemu/${VMID}/template
+
+      # ✅ Validate template flag
+      - name: Validate Template
+        run: |
+          TEMPLATE=$(curl -s -k \
+            -H "Authorization: PVEAPIToken=${{ secrets.PROXMOX_TOKEN_ID }}=${{ secrets.PROXMOX_TOKEN_SECRET }}" \
+            ${{ secrets.PROXMOX_URL }}/nodes/${NODE}/qemu/${VMID}/status/current \
+            | jq -r '.data.template')
+
+          echo "Template flag: $TEMPLATE"
+
+          if [ "$TEMPLATE" != "true" ]; then
+            echo "Template conversion failed!"
+            exit 1
+          fi
+
+          echo "✅ Rocky Golden Template Ready!"
