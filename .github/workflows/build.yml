@@ -78,7 +78,7 @@ jobs:
           TEMPLATE=$(echo "$RESPONSE" | jq -r '.data.template')
           echo "Template flag: $TEMPLATE"
 
-          if [ "$TEMPLATE" != "true" ]; then
+          if [ "$TEMPLATE" != "1" ]; then
             echo "❌ VM is NOT a template"
             exit 1
           fi
