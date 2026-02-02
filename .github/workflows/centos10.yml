@@ -41,14 +41,14 @@ jobs:
           PKR_VAR_proxmox_url: ${{ secrets.PROXMOX_URL }}
           PKR_VAR_token_id: ${{ secrets.PROXMOX_TOKEN_ID }}
           PKR_VAR_token_secret: ${{ secrets.PROXMOX_TOKEN_SECRET }}
-        run: packer validate centos10/centos10.pkr.hcl
+        run: packer validate centos10..pkr.hcl
 
       - name: Packer Build
         env:
           PKR_VAR_proxmox_url: ${{ secrets.PROXMOX_URL }}
           PKR_VAR_token_id: ${{ secrets.PROXMOX_TOKEN_ID }}
           PKR_VAR_token_secret: ${{ secrets.PROXMOX_TOKEN_SECRET }}
-        run: packer build centos10/centos10.pkr.hcl
+        run: packer build centos10..pkr.hcl
 
       - name: Verify VM stopped
         run: |
