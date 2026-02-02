@@ -1,4 +1,4 @@
-name: Build Proxmox Templates
+name: Build Rocky 9 Golden Image
 
 on:
   workflow_dispatch:
@@ -11,31 +11,38 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Install Packer
+      # Prevent the "wrong HCL file" problem forever
+      - name: Show files
         run: |
-          wget https://releases.hashicorp.com/packer/1.10.1/packer_1.10.1_linux_amd64.zip
-          unzip packer_1.10.1_linux_amd64.zip
-          sudo mv packer /usr/local/bin/
+          pwd
+          ls -la
+          find . -name "*.pkr.hcl"
+
+      - name: Install Packer (official apt)
+        run: |
+          sudo apt update
+          sudo apt install -y packer
 
       - name: Packer Init
-        run: packer init .
+        run: packer init rocky.pkr.hcl
 
-      - name: Build Rocky Template
-        run: |
-          packer build \
-          -var "proxmox_url=${{ secrets.PROXMOX_URL }}" \
-          -var "token_id=${{ secrets.PROXMOX_TOKEN_ID }}" \
-          -var "token_secret=${{ secrets.PROXMOX_TOKEN_SECRET }}" \
-          rocky.pkr.hcl
+      - name: Packer Validate
+        env:
+          PKR_VAR_proxmox_url: ${{ secrets.PROXMOX_URL }}
+          PKR_VAR_token_id: ${{ secrets.PROXMOX_TOKEN_ID }}
+          PKR_VAR_token_secret: ${{ secrets.PROXMOX_TOKEN_SECRET }}
+        run: packer validate rocky.pkr.hcl
 
+      - name: Packer Build Rocky Template
+        env:
+          PKR_VAR_proxmox_url: ${{ secrets.PROXMOX_URL }}
+          PKR_VAR_token_id: ${{ secrets.PROXMOX_TOKEN_ID }}
+          PKR_VAR_token_secret: ${{ secrets.PROXMOX_TOKEN_SECRET }}
+        run: packer build rocky.pkr.hcl
+
+      # Verify VM 9002 became a template
       - name: Verify Template
         run: |
-          curl -k -H "Authorization: PVEAPIToken=${{ secrets.PROXMOX_TOKEN_ID }}=${{ secrets.PROXMOX_TOKEN_SECRET }}" \
-          ${{ secrets.PROXMOX_URL }}/nodes/pve/qemu/9001/status/current | grep template
-
-      - name: Rename to Current
-        run: |
-          curl -k -X PUT \
+          curl -k \
           -H "Authorization: PVEAPIToken=${{ secrets.PROXMOX_TOKEN_ID }}=${{ secrets.PROXMOX_TOKEN_SECRET }}" \
-          -d "name=ubuntu-22-current" \
-          ${{ secrets.PROXMOX_URL }}/nodes/pve/qemu/9001/config
+          ${{ secrets.PROXMOX_URL }}/nodes/pve/qemu/9002/status/current | grep template
