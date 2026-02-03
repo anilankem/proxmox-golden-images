@@ -67,6 +67,17 @@ This project requires a Linux self-hosted runner for Packer builds.
 sudo ./bin/installdependencies.sh
 ```
 
+
+adduser gitrunner
+apt install sudo
+usermod -aG sudo gitrunner
+ mv /root/actions-runner /home/gitrunner/
+chown -R gitrunner:gitrunner /home/gitrunner/actions-runner
+su - gitrunner
+ cd actions-runner
+apt install sudo
+
+
 3. Install and start the service:
 ```bash
 sudo ./svc.sh install
