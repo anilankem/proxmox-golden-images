@@ -2,7 +2,8 @@ name: Build CentOS10 Golden Image
 
 on:
   #workflow_dispatch:
-  workflow_call:
+  #workflow_call:
+  workflow_dispatch:
 
 env:
   VMID: "9003"

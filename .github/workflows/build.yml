@@ -2,7 +2,8 @@ name: Build Rocky 9 Golden Image
 
 on:
   #workflow_dispatch: it is individual and non reusable
-    workflow_call:   
+  #workflow_call: 
+  workflow_dispatch:  
 
 env:
   VMID: "9002"
