@@ -60,9 +60,9 @@ source "proxmox-iso" "ubuntu24" {
   "<end>",
   " autoinstall ds=nocloud-net;s=http://{{ .HTTPIP }}:{{ .HTTPPort }}/ ---",
   "<f10>"
-]
+  ]
 
-]
+
 
 
   ssh_username = "root"
