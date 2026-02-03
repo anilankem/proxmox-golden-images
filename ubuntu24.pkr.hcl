@@ -47,7 +47,7 @@ source "proxmox-iso" "ubuntu24" {
 
   # ✅ ISO (v1.2 syntax)
   boot_iso {
-    type     = "virtio"
+    type     = "scsi"
     iso_file = "local:iso/ubuntu-24.iso"
     unmount  = true
   }
