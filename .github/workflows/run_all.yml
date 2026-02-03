@@ -1,0 +1,10 @@
+name: Run All Packer Builds
+
+on:
+  workflow_dispatch:
+
+jobs:
+  Rocky:
+    uses: ./.github/workflows/build.yml
+  centos:
+    uses: ./.github/workflows/centos10.yml
