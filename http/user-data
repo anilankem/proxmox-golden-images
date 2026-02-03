@@ -2,9 +2,13 @@
 autoinstall:
   version: 1
   locale: en_US.UTF-8
-
+  
   keyboard:
     layout: us
+
+  # 'interactive-sections' controls if the installer stops to ask questions.
+  # Set to [] (empty list) for fully automated.
+  interactive-sections: []
 
   ssh:
     install-server: true
@@ -13,6 +17,7 @@ autoinstall:
   identity:
     hostname: ubuntu24-golden
     username: ubuntu
+    # Password: "ubuntu" (example hash)
     password: "$6$gXvGGLYtBfU1cvyO$pRaGMuhKRB1XUQKszal3NbVoIJhf6UBSP482005KLbvlkXiVEMGp9eiqV78E3R5gCqxDv1kzraD3q86kfeDIE/"
 
   storage:
@@ -21,17 +26,19 @@ autoinstall:
 
   packages:
     - qemu-guest-agent
-    - cloud-init
-    - sudo
-    - openssh-server
+    # Removed: sudo, cloud-init, openssh-server (these are installed by default)
 
   late-commands:
-    # set root password
-    - curtin in-target --target=/target chpasswd <<< 'root:anilankem'
+    # 1. Set root password
+    # FIX: Use pipe (|) instead of here-string (<<<) to ensure compatibility with 'sh'
+    - "echo 'root:anilankem' | curtin in-target --target=/target -- chpasswd"
 
-    # enable root ssh login
-    - curtin in-target --target=/target sed -i 's/^#PermitRootLogin.*/PermitRootLogin yes/' /etc/ssh/sshd_config
-    - curtin in-target --target=/target sed -i 's/^#PasswordAuthentication.*/PasswordAuthentication yes/' /etc/ssh/sshd_config
+    # 2. Enable Root SSH Login
+    # FIX: Use -r to handle regex metacharacters properly if needed, and -- to separate args
+    - "curtin in-target --target=/target -- sed -i 's/^#\\?PermitRootLogin.*/PermitRootLogin yes/g' /etc/ssh/sshd_config"
+    
+    # 3. Enable Password Authentication (Backup measure, usually enabled by default in 'allow-pw: true')
+    - "curtin in-target --target=/target -- sed -i 's/^#\\?PasswordAuthentication.*/PasswordAuthentication yes/g' /etc/ssh/sshd_config"
 
-    # enable services
-    - curtin in-target --target=/target systemctl enable qemu-guest-agent
+    # 4. Enable QEMU Agent (and start it immediately if possible, though mostly for next boot)
+    - "curtin in-target --target=/target -- systemctl enable qemu-guest-agent"
