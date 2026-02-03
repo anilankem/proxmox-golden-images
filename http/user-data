@@ -15,13 +15,6 @@ autoinstall:
     username: ubuntu
     password: "$6$gXvGGLYtBfU1cvyO$pRaGMuhKRB1XUQKszal3NbVoIJhf6UBSP482005KLbvlkXiVEMGp9eiqV78E3R5gCqxDv1kzraD3q86kfeDIE/"
 
-  user-data:
-    disable_root: false
-    chpasswd:
-      expire: false
-      list:
-        - root:"$6$gXvGGLYtBfU1cvyO$pRaGMuhKRB1XUQKszal3NbVoIJhf6UBSP482005KLbvlkXiVEMGp9eiqV78E3R5gCqxDv1kzraD3q86kfeDIE/"
-
   storage:
     layout:
       name: lvm
@@ -33,6 +26,12 @@ autoinstall:
     - openssh-server
 
   late-commands:
+    # set root password
+    - curtin in-target --target=/target chpasswd <<< 'root:anilankem'
+
+    # enable root ssh login
     - curtin in-target --target=/target sed -i 's/^#PermitRootLogin.*/PermitRootLogin yes/' /etc/ssh/sshd_config
     - curtin in-target --target=/target sed -i 's/^#PasswordAuthentication.*/PasswordAuthentication yes/' /etc/ssh/sshd_config
+
+    # enable services
     - curtin in-target --target=/target systemctl enable qemu-guest-agent
