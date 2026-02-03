@@ -53,7 +53,7 @@ source "proxmox-iso" "ubuntu24" {
   }
 
   http_directory = "http"
-  boot_wait = "25s"
+  boot_wait = "10s"
 
   boot_command = [
   "e<wait>",
