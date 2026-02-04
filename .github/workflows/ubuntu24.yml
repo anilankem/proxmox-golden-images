@@ -61,6 +61,14 @@ jobs:
 
           [ "$STATE" = "stopped" ]
 
+      - name: Attach Cloud-Init Drive 
+        run: |
+          echo "Attaching cloud-init drive..."
+          curl -s -k -X PUT \
+            -H "Authorization: PVEAPIToken=${{ secrets.PROXMOX_TOKEN_ID }}=${{ secrets.PROXMOX_TOKEN_SECRET }}" \
+            "${{ secrets.PROXMOX_URL }}/nodes/${NODE}/qemu/${VMID}/config" \
+            -d "ide2=local-lvm:cloudinit"
+
       - name: Convert to Template
         run: |
           curl -s -k -X POST \
