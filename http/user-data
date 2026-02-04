@@ -29,23 +29,16 @@ autoinstall:
     # Removed: sudo, cloud-init, openssh-server (these are installed by default)
 
   late-commands:
-    # 1. SSH Configuration (Create a priority override file)
-    - curtin in-target --target=/target -- sh -c "echo 'PermitRootLogin yes' > /etc/ssh/sshd_config.d/99-root-login.conf"
-    - curtin in-target --target=/target -- sh -c "echo 'PasswordAuthentication yes' >> /etc/ssh/sshd_config.d/99-root-login.conf"
-    - curtin in-target --target=/target -- chmod 644 /etc/ssh/sshd_config.d/99-root-login.conf
+  - "curtin in-target --target=/target -- sh -c 'echo PermitRootLogin yes > /etc/ssh/sshd_config.d/99-root-login.conf'"
+  - "curtin in-target --target=/target -- sh -c 'echo PasswordAuthentication yes >> /etc/ssh/sshd_config.d/99-root-login.conf'"
+  - "curtin in-target --target=/target -- chmod 644 /etc/ssh/sshd_config.d/99-root-login.conf"
 
-    # 2. Unlock Root Account (CRITICAL STEP)
-    # -U unlocks the account, -s ensures they have a login shell
-    - curtin in-target --target=/target -- usermod -U root
-    - curtin in-target --target=/target -- usermod -s /bin/bash root
+  - "curtin in-target --target=/target -- usermod -U root"
+  - "curtin in-target --target=/target -- usermod -s /bin/bash root"
 
-    # 3. Set Root Password
-    # usage of chpasswd is correct, but we ensure it runs in a clean shell environment
-    - curtin in-target --target=/target -- sh -c "echo 'root:anilankem' | chpasswd"
+  - "curtin in-target --target=/target -- sh -c 'echo root:anilankem | chpasswd'"
 
-    # 4. Enable QEMU Agent
-    - curtin in-target --target=/target -- systemctl enable qemu-guest-agent
+  - "curtin in-target --target=/target -- systemctl enable qemu-guest-agent"
 
-    # 5. cloud init config for root login via ssh password
-    - curtin in-target --target=/target -- sh -c "echo 'disable_root: false' >> /etc/cloud/cloud.cfg"
-    - curtin in-target --target=/target -- sh -c "echo 'ssh_pwauth: true' >> /etc/cloud/cloud.cfg"
+  - "curtin in-target --target=/target -- sh -c 'echo disable_root: false >> /etc/cloud/cloud.cfg'"
+  - "curtin in-target --target=/target -- sh -c 'echo ssh_pwauth: true >> /etc/cloud/cloud.cfg'"
