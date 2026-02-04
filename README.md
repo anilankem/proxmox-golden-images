@@ -62,23 +62,63 @@ This project requires a Linux self-hosted runner for Packer builds.
 1. Register the runner:
    Use GitHub at `Settings` > `Actions` > `Runners` > `New self-hosted runner`, choose Linux, then follow the download and configure instructions.
 
-2. Install dependencies (inside the runner directory):
+2. Install dependencies (on the runner machine):
+
+   **As root:** install system packages, Packer, and create the `gitrunner` user. Then move the runner into that user’s home and switch to it before configuring the service.
+
+```bash
+sudo apt update && sudo apt upgrade -y
+sudo apt install -y \
+  curl \
+  jq \
+  git \
+  unzip \
+  ca-certificates \
+  gnupg \
+  lsb-release
+
+echo "deb [signed-by=/usr/share/keyrings/hashicorp.gpg] \
+https://apt.releases.hashicorp.com \
+$(lsb_release -cs) main" \
+| sudo tee /etc/apt/sources.list.d/hashicorp.list
+
+sudo apt update
+sudo apt install -y packer
+
+sudo useradd -m -s /bin/bash gitrunner
+sudo usermod -aG sudo gitrunner
+
+# If the runner was extracted as root, move it to gitrunner's home
+sudo mv /root/actions-runner /home/gitrunner/
+sudo chown -R gitrunner:gitrunner /home/gitrunner/actions-runner
+```
+
+   **Inside the runner directory** (if your setup uses `installdependencies.sh`):
+
 ```bash
 sudo ./bin/installdependencies.sh
 ```
 
+   **As `gitrunner`** (not root): generate an SSH key for GitHub:
 
-adduser gitrunner
-apt install sudo
-usermod -aG sudo gitrunner
- mv /root/actions-runner /home/gitrunner/
-chown -R gitrunner:gitrunner /home/gitrunner/actions-runner
+```bash
 su - gitrunner
- cd actions-runner
-apt install sudo
+cd ~/actions-runner   # or wherever the runner lives
 
+ssh-keygen -t ed25519 -C "gitrunner@proxmox-packer-runner"
+# Press Enter for all prompts (no passphrase for runners)
+```
 
-3. Install and start the service:
+   Files created: `~/.ssh/id_ed25519` and `~/.ssh/id_ed25519.pub`.
+
+   - **Copy the public key:** `cat ~/.ssh/id_ed25519.pub` — copy the whole line.
+   - **Add key to GitHub:** GitHub → Settings → SSH and GPG keys → New SSH key (or Repo → Settings → Deploy Keys → Add key → Allow write access for a single repo).
+   - **Test connection:** `ssh -T git@github.com`
+   - **Use SSH repo URL:** For manual pulls use `git clone git@github.com:<user>/<repo>.git` or `git remote set-url origin git@github.com:<user>/<repo>.git`.
+   - **Known hosts (avoid first-time prompt):** `ssh-keyscan github.com >> ~/.ssh/known_hosts`
+
+3. Install and start the service (as `gitrunner`, inside the runner directory):
+
 ```bash
 sudo ./svc.sh install
 sudo ./svc.sh start
