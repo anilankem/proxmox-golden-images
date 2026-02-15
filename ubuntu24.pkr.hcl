@@ -81,7 +81,7 @@ provisioner "shell" {
     "export DEBIAN_FRONTEND=noninteractive",
     "apt-get update",
     "apt-get -y upgrade",
-    "apt-get -y install qemu-guest-agent cloud-init sudo",
+    "apt-get -y install python3 python3-apt qemu-guest-agent cloud-init sudo",
     "cloud-init clean",
     "truncate -s 0 /etc/machine-id",
     "rm -f /var/lib/dbus/machine-id",
